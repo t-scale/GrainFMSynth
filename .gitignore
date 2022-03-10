@@ -1,0 +1,5 @@
+/build
+.vscode
+faustMinimal.h
+GrainFMSynth.code-workspace
+GrainFMSynth.filtergraph
