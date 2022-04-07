@@ -160,7 +160,7 @@ void GrainFMSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     float fm_mod_index = apvts.getRawParameterValue ("FM_MOD_INDEX")->load();
     float fm_mod_index_spread = apvts.getRawParameterValue ("FM_MOD_INDEX_SPREAD")->load();
 
-    for (auto partial = 0; partial < num_partials; partial++) 
+    for (auto partial = 0; partial < num_partials; partial++)
     {    
         ownedarray_onegrain.getUnchecked(partial)->frequency ( 
             fc_freq + (partial * fc_f_spread) * cos ( juce::MathConstants<float>::twoPi * fc_f_spread_shape * partial / num_partials )
