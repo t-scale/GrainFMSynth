@@ -31,6 +31,7 @@ void OneGrain::releaseResources()
   for (int channel = 0; channel < 2; ++channel)
       delete[] outputs[channel];
 }
+
 void OneGrain::process (juce::dsp::ProcessContextReplacing<float> context)
 { 
   if (context.isBypassed) context.getOutputBlock().clear();

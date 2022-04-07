@@ -150,20 +150,34 @@ void GrainFMSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::dsp::AudioBlock<float> main_audioblock { buffer };
     float fc_freq = apvts.getRawParameterValue ("FC_FUND")->load();
     float fc_f_spread = apvts.getRawParameterValue ("FC_F_SPREAD")->load();
-    // float fc_f_spread_shape = apvts.getRawParameterValue ("FC_F_SPREAD_SHAPE")->load();
-    // float fc_a_shape = apvts.getRawParameterValue ("FC_A_SHAPE")->load();
+    float fc_f_spread_shape = apvts.getRawParameterValue ("FC_F_SPREAD_SHAPE")->load();
+    float fc_a_shape = apvts.getRawParameterValue ("FC_A_SHAPE")->load();
     // float fc_a_sweep = apvts.getRawParameterValue ("FC_A_SWEEP")->load();
     float fc_amplitude = apvts.getRawParameterValue ("FC_AMPLITUDE")->load();
     float fm_harm_ratio = apvts.getRawParameterValue ("FM_HARM_RATIO")->load();
+    float fm_harm_ratio_spread = apvts.getRawParameterValue ("FM_HARM_RATIO_SPREAD")->load();
+    float fm_harm_ratio_spread_shape = apvts.getRawParameterValue ("FM_HARM_RATIO_SPREAD_SHAPE")->load();
     float fm_mod_index = apvts.getRawParameterValue ("FM_MOD_INDEX")->load();
+    float fm_mod_index_spread = apvts.getRawParameterValue ("FM_MOD_INDEX_SPREAD")->load();
 
     for (auto partial = 0; partial < num_partials; partial++) 
     {    
-        ownedarray_onegrain.getUnchecked(partial)->frequency ( fc_freq + (partial + 1) * fc_f_spread );
-        ownedarray_onegrain.getUnchecked(partial)->amplitude ( fc_amplitude );
-        ownedarray_onegrain.getUnchecked(partial)->harmonic_ratio ( fm_harm_ratio + (partial + 1) * fc_f_spread);
-        ownedarray_onegrain.getUnchecked(partial)->mod_index ( fm_mod_index + (partial + 1) * fc_f_spread);
-        ownedarray_onegrain.getUnchecked(partial)->process (juce::dsp::ProcessContextReplacing<float> (main_audioblock));
+        ownedarray_onegrain.getUnchecked(partial)->frequency ( 
+            fc_freq + (partial * fc_f_spread) * cos ( juce::MathConstants<float>::twoPi * fc_f_spread_shape * partial / num_partials )
+        );
+
+        ownedarray_onegrain.getUnchecked(partial)->amplitude ( 
+            fc_amplitude * cos ( juce::MathConstants<float>::twoPi * fc_a_shape * partial / num_partials )
+        );
+
+        ownedarray_onegrain.getUnchecked(partial)->harmonic_ratio ( 
+            fm_harm_ratio + ( partial * fm_harm_ratio_spread ) * cos (
+                juce::MathConstants<float>::twoPi * fm_harm_ratio_spread_shape * partial / num_partials
+            )
+        );
+
+        ownedarray_onegrain.getUnchecked(partial)->mod_index ( fm_mod_index + (partial * fm_mod_index_spread) );
+        ownedarray_onegrain.getUnchecked(partial)->process ( juce::dsp::ProcessContextReplacing<float> (main_audioblock) );
     }
 
     gain.process (juce::dsp::ProcessContextReplacing<float> (main_audioblock));
@@ -184,15 +198,18 @@ juce::AudioProcessorEditor* GrainFMSynthAudioProcessor::createEditor()
 //==============================================================================
 void GrainFMSynthAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    copyXmlToBinary (*xml, destData);
 }
 
 void GrainFMSynthAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+
+    if (xmlState.get() != nullptr)
+        if (xmlState->hasTagName (apvts.state.getType() ))
+            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::createParameterLayout()
@@ -204,7 +221,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::
         "F(c) Fundamental Frequency",
         juce::NormalisableRange<float>
         (
-            20.f, 2200.f, 1.f
+            20.f, 2200.f, 0.01f
         ),
         220.f
     ));
@@ -270,7 +287,29 @@ juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::
         "F(m) Harmonic Ratio",
         juce::NormalisableRange<float>
         (
-            0.f, 4.f, 0.001f
+            0.f, 16.f, 0.001f
+        ),
+        0.f
+    ));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat>
+    (
+        "FM_HARM_RATIO_SPREAD",
+        "F(m) Harmonic Ratio Spread",
+        juce::NormalisableRange<float>
+        (
+            0.f, 1.f, 0.001f
+        ),
+        0.f
+    ));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat>
+    (
+        "FM_HARM_RATIO_SPREAD_SHAPE",
+        "F(m) Harmonic Ratio Spread Shape",
+        juce::NormalisableRange<float>
+        (
+            0.f, 1.f, 0.001f
         ),
         0.f
     ));
@@ -282,6 +321,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::
         juce::NormalisableRange<float>
         (
             0.f, 1100.f, 0.001f
+        ),
+        0.f
+    ));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat>
+    (
+        "FM_MOD_INDEX_SPREAD",
+        "F(m) Modulation Index Spread",
+        juce::NormalisableRange<float>
+        (
+            0.f, 64.f, 0.001f
         ),
         0.f
     ));

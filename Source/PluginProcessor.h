@@ -11,6 +11,8 @@
 #include <JuceHeader.h>
 #include "OneGrain.h"
 
+#define MAX_PARTIALS 128
+
 //==============================================================================
 /**
 */
