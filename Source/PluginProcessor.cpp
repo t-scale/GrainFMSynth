@@ -19,7 +19,8 @@ GrainFMSynthAudioProcessor::GrainFMSynthAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ), apvts ( *this, nullptr, "PARAMETERS", createParameterLayout() )
+                       ), apvts ( *this, nullptr, "PARAMETERS", createParameterLayout() ),
+                       num_partials (16)
 #endif
 {
 
@@ -159,6 +160,7 @@ void GrainFMSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     float fm_harm_ratio_spread_shape = apvts.getRawParameterValue ("FM_HARM_RATIO_SPREAD_SHAPE")->load();
     float fm_mod_index = apvts.getRawParameterValue ("FM_MOD_INDEX")->load();
     float fm_mod_index_spread = apvts.getRawParameterValue ("FM_MOD_INDEX_SPREAD")->load();
+    num_partials = apvts.getRawParameterValue ("NUM_PARTIALS")->load();
 
     for (auto partial = 0; partial < num_partials; partial++)
     {    
@@ -259,16 +261,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::
         0.f
     ));
 
-    layout.add (std::make_unique<juce::AudioParameterFloat>
-    (
-        "FC_A_SWEEP",
-        "F(c) Amplitude Sweep",
-        juce::NormalisableRange<float>
-        (
-            0.f, 1.f, 0.001f
-        ),
-        0.f
-    ));
+    // layout.add (std::make_unique<juce::AudioParameterFloat>
+    // (
+    //     "FC_A_SWEEP",
+    //     "F(c) Amplitude Sweep",
+    //     juce::NormalisableRange<float>
+    //     (
+    //         0.f, 1.f, 0.001f
+    //     ),
+    //     0.f
+    // ));
 
     layout.add (std::make_unique<juce::AudioParameterFloat>
     (
@@ -334,6 +336,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::
             0.f, 64.f, 0.001f
         ),
         0.f
+    ));
+
+    layout.add (std::make_unique<juce::AudioParameterInt>
+    (
+        "NUM_PARTIALS",
+        "Number of Partials",
+        1, 128, 16
     ));
 
     return layout;

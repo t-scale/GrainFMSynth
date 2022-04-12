@@ -67,7 +67,7 @@ public:
 private:
     juce::dsp::Gain<float> gain;
     juce::OwnedArray<OneGrain> ownedarray_onegrain;
-    const int num_partials = 128;
+    int num_partials;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GrainFMSynthAudioProcessor)
 };
