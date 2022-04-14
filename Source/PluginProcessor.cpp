@@ -149,6 +149,7 @@ void GrainFMSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer.clear (i, 0, buffer.getNumSamples());
     
     juce::dsp::AudioBlock<float> main_audioblock { buffer };
+    
     float fc_freq = apvts.getRawParameterValue ("FC_FUND")->load();
     float fc_f_spread = apvts.getRawParameterValue ("FC_F_SPREAD")->load();
     float fc_f_spread_shape = apvts.getRawParameterValue ("FC_F_SPREAD_SHAPE")->load();

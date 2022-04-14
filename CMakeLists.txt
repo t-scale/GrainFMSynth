@@ -69,6 +69,9 @@ jucer_project_files("GrainFMSynth/Source"
   .         .         .         "Source/PluginProcessor.h"
   x         .         .         "Source/PluginEditor.cpp"
   .         .         .         "Source/PluginEditor.h"
+  .         .         .         "Source/SynthSound.h"
+  x         .         .         "Source/SynthVoice.cpp"
+  .         .         .         "Source/SynthVoice.h"
 )
 
 jucer_project_module(

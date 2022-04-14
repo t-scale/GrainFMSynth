@@ -10,8 +10,11 @@
 
 #include <JuceHeader.h>
 #include "OneGrain.h"
+#include "SynthSound.h"
+#include "SynthVoice.h"
 
 #define MAX_PARTIALS 128
+#define MAX_VOICES 8
 
 //==============================================================================
 /**
