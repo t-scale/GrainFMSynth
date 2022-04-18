@@ -5,3 +5,7 @@
 faustMinimal.h
 *.code-workspace
 *.filtergraph
+*.RPP
+*.RPP-UNDO
+*.RPP-bak
+*.rpp-bak
