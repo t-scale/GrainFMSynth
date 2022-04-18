@@ -19,11 +19,14 @@ GrainFMSynthAudioProcessor::GrainFMSynthAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ), apvts ( *this, nullptr, "PARAMETERS", createParameterLayout() ),
-                       num_partials (16)
+                       ), apvts ( *this, nullptr, "PARAMETERS", createParameterLayout() )
 #endif
 {
-
+    for (auto i = 0; i < MAX_VOICES; i++)
+    {
+        synth.addSound (new SynthSound());
+        synth.addVoice (new SynthVoice());
+    }
 }
 
 GrainFMSynthAudioProcessor::~GrainFMSynthAudioProcessor()
@@ -96,21 +99,25 @@ void GrainFMSynthAudioProcessor::changeProgramName (int index, const juce::Strin
 //==============================================================================
 void GrainFMSynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    juce::dsp::ProcessSpec spec;
-    spec.sampleRate = sampleRate;
-    spec.maximumBlockSize = samplesPerBlock;
-    spec.numChannels = getTotalNumOutputChannels();
-    gain.setGainLinear (0.7f);
-    for (auto i = 0; i < num_partials; ++i) {
-        ownedarray_onegrain.add (new OneGrain());
-        ownedarray_onegrain.getUnchecked(i)->prepareToPlay (sampleRate, samplesPerBlock);
+    synth.setCurrentPlaybackSampleRate (sampleRate);
+
+    for (auto i = 0; i < synth.getNumVoices(); ++i)
+    {
+        if (auto voice = dynamic_cast<SynthVoice*> (synth.getVoice(i)))
+        {
+            voice->prepareToPlay ( sampleRate, samplesPerBlock, getTotalNumOutputChannels() );
+        }
     }
 }
 
 void GrainFMSynthAudioProcessor::releaseResources()
 {
-    for (auto partial = 0; partial < num_partials; partial++) 
-        ownedarray_onegrain.getUnchecked(partial)->releaseResources();
+    for (auto i = 0; i < synth.getNumVoices(); ++i)
+    {
+        if (auto voice = dynamic_cast<SynthVoice*> (synth.getVoice(i)))
+            voice->releaseResources();
+    }
+
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -148,7 +155,7 @@ void GrainFMSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     
-    juce::dsp::AudioBlock<float> main_audioblock { buffer };
+    // juce::dsp::AudioBlock<float> main_audioblock { buffer };
     
     float fc_freq = apvts.getRawParameterValue ("FC_FUND")->load();
     float fc_f_spread = apvts.getRawParameterValue ("FC_F_SPREAD")->load();
@@ -161,29 +168,23 @@ void GrainFMSynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     float fm_harm_ratio_spread_shape = apvts.getRawParameterValue ("FM_HARM_RATIO_SPREAD_SHAPE")->load();
     float fm_mod_index = apvts.getRawParameterValue ("FM_MOD_INDEX")->load();
     float fm_mod_index_spread = apvts.getRawParameterValue ("FM_MOD_INDEX_SPREAD")->load();
-    num_partials = apvts.getRawParameterValue ("NUM_PARTIALS")->load();
+    float amp_attack = apvts.getRawParameterValue ("AMP_ATTACK")->load();
+    float amp_decay = apvts.getRawParameterValue ("AMP_DECAY")->load();
+    float amp_sustain = apvts.getRawParameterValue ("AMP_SUSTAIN")->load();
+    float amp_release = apvts.getRawParameterValue ("AMP_RELEASE")->load();
+    // num_partials = apvts.getRawParameterValue ("NUM_PARTIALS")->load();
 
-    for (auto partial = 0; partial < num_partials; partial++)
-    {    
-        ownedarray_onegrain.getUnchecked(partial)->frequency ( 
-            fc_freq + (partial * fc_f_spread) * cos ( juce::MathConstants<float>::twoPi * fc_f_spread_shape * partial / num_partials )
-        );
-
-        ownedarray_onegrain.getUnchecked(partial)->amplitude ( 
-            fc_amplitude * cos ( juce::MathConstants<float>::twoPi * fc_a_shape * partial / num_partials )
-        );
-
-        ownedarray_onegrain.getUnchecked(partial)->harmonic_ratio ( 
-            fm_harm_ratio + ( partial * fm_harm_ratio_spread ) * cos (
-                juce::MathConstants<float>::twoPi * fm_harm_ratio_spread_shape * partial / num_partials
-            )
-        );
-
-        ownedarray_onegrain.getUnchecked(partial)->mod_index ( fm_mod_index + (partial * fm_mod_index_spread) );
-        ownedarray_onegrain.getUnchecked(partial)->process ( juce::dsp::ProcessContextReplacing<float> (main_audioblock) );
+    for (auto i = 0; i < synth.getNumVoices(); ++i)
+    {
+        if (auto voice = dynamic_cast<SynthVoice*> (synth.getVoice(i)))
+        {
+            voice->setFrequencySpectrum ( fc_freq, fc_f_spread, fc_f_spread_shape, fc_amplitude, fc_a_shape );
+            voice->setHarmonicRatios ( fm_harm_ratio, fm_harm_ratio_spread, fm_harm_ratio_spread_shape );
+            voice->setModulationIndexes ( fm_mod_index, fm_mod_index_spread );
+            voice->setAmplitudeADSR ( amp_attack, amp_decay, amp_sustain, amp_release );
+        }
     }
-
-    gain.process (juce::dsp::ProcessContextReplacing<float> (main_audioblock));
+    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 }
 
 //==============================================================================
@@ -281,7 +282,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::
         (
             0.f, 1.f, 0.001f
         ),
-        0.f
+        0.5f
     ));
 
     layout.add (std::make_unique<juce::AudioParameterFloat>
@@ -339,17 +340,59 @@ juce::AudioProcessorValueTreeState::ParameterLayout GrainFMSynthAudioProcessor::
         0.f
     ));
 
-    layout.add (std::make_unique<juce::AudioParameterInt>
+    // layout.add (std::make_unique<juce::AudioParameterInt>
+    // (
+    //     "NUM_PARTIALS",
+    //     "Number of Partials",
+    //     1, 128, 16
+    // ));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat>
     (
-        "NUM_PARTIALS",
-        "Number of Partials",
-        1, 128, 16
+        "AMP_ATTACK",
+        "Amplitude Attack",
+        juce::NormalisableRange<float>
+        (
+            0.001f, 1.f, 0.001f
+        ),
+        0.05f
+    ));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat>
+    (
+        "AMP_DECAY",
+        "Amplitude Decay",
+        juce::NormalisableRange<float>
+        (
+            0.001f, 4.f, 0.001f
+        ),
+        0.4f
+    ));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat>
+    (
+        "AMP_SUSTAIN",
+        "Amplitude Sustain",
+        juce::NormalisableRange<float>
+        (
+            0.f, 1.f, 0.001f
+        ),
+        1.f
+    ));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat>
+    (
+        "AMP_RELEASE",
+        "Amplitude Release",
+        juce::NormalisableRange<float>
+        (
+            0.001f, 4.f, 0.001f
+        ),
+        0.4f
     ));
 
     return layout;
 }
-
-void GrainFMSynthAudioProcessor::preparePartials() {}
 
 //==============================================================================
 // This creates new instances of the plugin..

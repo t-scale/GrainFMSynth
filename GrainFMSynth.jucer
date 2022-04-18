@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="iRFUD7" name="GrainFMSynth" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" cppLanguageStandard="17">
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" cppLanguageStandard="17"
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="xHwl8N" name="GrainFMSynth">
     <GROUP id="{D4EFF4FE-EB3E-C35E-8441-4DDD04CC5818}" name="Source">
       <FILE id="J0LQyH" name="OneGrain.cpp" compile="1" resource="0" file="Source/OneGrain.cpp"/>

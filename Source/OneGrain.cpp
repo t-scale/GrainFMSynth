@@ -36,14 +36,14 @@ void OneGrain::process (juce::dsp::ProcessContextReplacing<float> context)
 { 
   if (context.isBypassed) context.getOutputBlock().clear();
 
-  auto&& input_block  = context.getInputBlock();
+//  auto&& input_block  = context.getInputBlock();
   auto&& output_block = context.getOutputBlock();
 
   auto num_samples = output_block.getNumSamples();
   auto num_channels = output_block.getNumChannels();
-  auto input_channels = input_block.getNumChannels();
+//  auto input_channels = input_block.getNumChannels();
 
-  fDSP->compute (num_samples, NULL, outputs);
+  fDSP->compute ((int)num_samples, NULL, outputs);
 
   for (auto channel = 0; channel < num_channels; channel++) {
     for (auto sample = 0; sample < num_samples; sample++) {

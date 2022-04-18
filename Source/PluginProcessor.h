@@ -13,8 +13,7 @@
 #include "SynthSound.h"
 #include "SynthVoice.h"
 
-#define MAX_PARTIALS 128
-#define MAX_VOICES 8
+#define MAX_VOICES 4
 
 //==============================================================================
 /**
@@ -64,13 +63,9 @@ public:
 
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts { *this, nullptr, "PARAMETERS", createParameterLayout() };
-    void preparePartials();
-    void processPartials (juce::dsp::AudioBlock<float> &audioblock);
 
 private:
-    juce::dsp::Gain<float> gain;
-    juce::OwnedArray<OneGrain> ownedarray_onegrain;
-    int num_partials;
+    juce::Synthesiser synth;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GrainFMSynthAudioProcessor)
 };
